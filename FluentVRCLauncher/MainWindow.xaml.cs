@@ -45,64 +45,66 @@ namespace FluentVRC
 
 
 
-        private void TerminateVRChatProcess()
+        public void TerminateVRProcesses()
         {
             try
             {
-                // 指定された名前のプロセスを取得
-                Process[] vrchatProcesses = Process.GetProcessesByName("VRChat");
+                // システム上の全プロセスを取得
+                var allProcesses = Process.GetProcesses();
 
-                if (vrchatProcesses.Length == 0)
-                {
-                    return; // 処理終了
-                }
+                // 条件に合うプロセスをフィルタリング
+                // 1. プロセス名に "VR" を含む (大文字小文字を区別しない)
+                // 2. プロセス名が "FluentVRC" ではない (大文字小文字を区別しない)
+                var processesToKill = allProcesses
+                    .Where(p => p.ProcessName.Contains("VR", StringComparison.OrdinalIgnoreCase)
+                             && !p.ProcessName.Equals("FluentVRC", StringComparison.OrdinalIgnoreCase));
 
-                // 見つかったすべての VRChat プロセスを終了させる (通常は1つのはず)
-                int terminatedCount = 0;
-                int errorCount = 0;
-                foreach (Process process in vrchatProcesses)
+                bool foundProcess = false; // 対象が見つかったかどうかのフラグ
+
+                // フィルタリングされた各プロセスを終了
+                foreach (var process in processesToKill)
                 {
+                    foundProcess = true;
                     try
                     {
-                        // プロセスを強制終了
-                        process.Kill();
-                        // 少し待機 (オプション: 終了を確認するため)
-                        // process.WaitForExit(1000); // 1秒待つ
-                        terminatedCount++;
-                        Console.WriteLine($"プロセス ID {process.Id} を終了しました。");
+                        Console.WriteLine($"プロセス '{process.ProcessName}' (ID: {process.Id}) を終了しようとしています...");
+                        process.Kill(); // プロセスを強制終了
+                                        // Kill() は非同期の場合があるので、少し待つか確認が必要な場合がある
+                                        // process.WaitForExit(500); // 必要であれば短い待機時間を追加 (ミリ秒)
+                        Console.WriteLine($"プロセス '{process.ProcessName}' (ID: {process.Id}) を終了しました。");
                     }
                     catch (Win32Exception ex)
                     {
-                        // アクセス拒否などのエラー
-                        errorCount++;
-                        Console.WriteLine($"プロセス ID {process.Id} の終了に失敗しました (Win32Exception): {ex.Message}");
+                        // アクセス権がない、などのOSレベルのエラー
+                        Console.WriteLine($"エラー: プロセス '{process.ProcessName}' (ID: {process.Id}) の終了に失敗しました (権限等)。{ex.Message}");
                     }
                     catch (InvalidOperationException ex)
                     {
-                        // プロセスが既に終了しているなどのエラー
-                        errorCount++;
-                        Console.WriteLine($"プロセス ID {process.Id} の終了に失敗しました (InvalidOperationException): {ex.Message}");
-                        // すでに終了している可能性が高いので、ユーザーへの通知は任意
+                        // プロセスが既に終了している、または終了できない状態
+                        Console.WriteLine($"エラー: プロセス '{process.ProcessName}' (ID: {process.Id}) は既に終了しているか、終了できません。{ex.Message}");
                     }
                     catch (Exception ex)
                     {
                         // その他の予期せぬエラー
-                        errorCount++;
-                        Console.WriteLine($"プロセス ID {process.Id} の終了中に予期せぬエラーが発生しました: {ex.Message}");
+                        Console.WriteLine($"エラー: プロセス '{process.ProcessName}' (ID: {process.Id}) の終了中に予期せぬエラーが発生しました。{ex.Message}");
                     }
                     finally
                     {
-                        // プロセスオブジェクトのリソースを解放
+                        // 各プロセスオブジェクトのリソースを解放
                         process.Dispose();
                     }
                 }
+
+                // 対象プロセスが見つからなかった場合にメッセージを表示
+                if (!foundProcess)
+                {
+                    Console.WriteLine("終了対象となるVR関連プロセスは見つかりませんでした。");
+                }
             }
-
-
             catch (Exception ex)
             {
-                // GetProcessesByName などで予期せぬエラーが発生した場合
-                Console.WriteLine($"プロセスの取得中にエラーが発生しました: {ex.Message}");
+                // GetProcesses() など、プロセス列挙自体でエラーが発生した場合
+                Console.WriteLine($"プロセスの取得または処理中にエラーが発生しました: {ex.Message}");
             }
         }
 
@@ -342,7 +344,7 @@ namespace FluentVRC
 
         private void killButton_Click(object sender, RoutedEventArgs e)
         {
-            TerminateVRChatProcess();
+            TerminateVRProcesses();
         }
     }
 }

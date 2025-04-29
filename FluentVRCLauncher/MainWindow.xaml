@@ -20,7 +20,7 @@
         
         mc:Ignorable="d"
         Title="FluentVRC" Height="220" Width="350">
-    <Grid Margin="15,0,15,15">
+    <Grid Margin="15,5,15,15">
         <Grid.RowDefinitions>
             <RowDefinition Height="38"/>
 
